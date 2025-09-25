@@ -8,10 +8,10 @@ package ui;
 /**
  *
 
- * @author felipe
+ * @author miguel
+
 
  *
-
  */
 public class NewClass {
     
