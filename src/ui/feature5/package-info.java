@@ -4,22 +4,7 @@
  * and open the template in the editor.
  */
 package ui.feature5;
-
-import java.util.Scanner;
-
-public class HolaMundo {
-    public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
-
-        System.out.print("¿Cómo te llamas? ");
-        String nombre = scanner.nextLine();
-
-        System.out.println("¡Hola, " + nombre + "! Bienvenido al programa.");
-        
-        scanner.close();
-    }
     
     /**
      *Añadido comentario
      */
-}
