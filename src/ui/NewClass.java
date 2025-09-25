@@ -7,7 +7,11 @@ package ui;
 
 /**
  *
+
  * @author miguel
+
+
+ *
  */
 public class NewClass {
     
