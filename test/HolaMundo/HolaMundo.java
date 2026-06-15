@@ -384,10 +384,12 @@ public class DepositsAndPaymentsAdvancedTest extends ApplicationTest {
 }
 
 
+Profe
+
 import static org.junit.Assert.assertEquals;
+import static org.testfx.matcher.control.LabeledMatchers.isDefaultButton;
 import org.junit.Test;
 import org.testfx.framework.junit.ApplicationTest;
-import javafx.scene.input.KeyCode;
 import javafx.scene.control.TableView;
 import clientside.model.Movement;
 import javafx.stage.Stage;
@@ -397,106 +399,254 @@ import java.text.SimpleDateFormat;
 
 public class DepositsAndPaymentsTest extends ApplicationTest {
 
-    // Aquí deberías sobreescribir el método start() para lanzar tu aplicación o vista
+    @Override
+    public void start(Stage stage) throws Exception {
+        // Lógica de inicio de tu vista (ej. new CRUDBankJFXApplication().start(stage);)
+    }
+
+    @Test
+    public void testDeposit() {
+        // Prepare data for testing:
+        // get table view
+        TableView<Movement> table = lookup("#tbMovements").queryTableView();
+        
+        // create a Movement with known values
+        Movement movement = new Movement();
+        // By default operation combo has deposit selected so new movement description will be "Deposit"
+        movement.setDescription("Deposit");
+        // Generate a positive amount for movement
+        Double amount = 150.0; 
+        movement.setAmount(amount);
+        // Set movement date
+        movement.setTimestamp(new java.util.Date());
+        
+        // Interaction with UI:
+        clickOn("#tfAmount");
+        // write amount
+        write(movement.getAmount().toString());
+        // make deposit
+        clickOn("#btMake");
+        
+        // Confirm operation (locale independent)
+        clickOn(isDefaultButton());
+        
+        // Verify movement data is in the table: do it for all visible columns
+        // NOTE that movement timestamp is formatted: create a formatter
+        SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
+        
+        assertEquals("The movement has not been added!!!",
+                1L, // Usamos 1L porque count() devuelve un long
+                table.getItems().stream()
+                        .filter(m -> m.getAmount().equals(movement.getAmount()))
+                        .filter(m -> m.getDescription().equals(movement.getDescription()))
+                        .filter(m -> dateFormat.format(m.getTimestamp()).equals(dateFormat.format(movement.getTimestamp())))
+                        .count());
+    }
+
+    @Test
+    public void testPayment() {
+        // Prepare data for testing:
+        TableView<Movement> table = lookup("#tbMovements").queryTableView();
+        
+        Movement movement = new Movement();
+        movement.setDescription("Payment");
+        Double amount = 50.0;
+        movement.setAmount(amount);
+        movement.setTimestamp(new java.util.Date());
+        
+        // Interaction with UI:
+        // Seleccionamos Payment en el combo
+        clickOn("#cbOperation").clickOn("Payment");
+        
+        clickOn("#tfAmount");
+        write(movement.getAmount().toString());
+        
+        clickOn("#btMake");
+        
+        // Confirm operation
+        clickOn(isDefaultButton());
+        
+        // Verify movement data
+        SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
+        
+        assertEquals("The movement has not been added!!!",
+                1L,
+                table.getItems().stream()
+                        .filter(m -> m.getAmount().equals(movement.getAmount()))
+                        .filter(m -> m.getDescription().equals(movement.getDescription()))
+                        .filter(m -> dateFormat.format(m.getTimestamp()).equals(dateFormat.format(movement.getTimestamp())))
+                        .count());
+    }
+
+    @Test
+    public void testCancelDeposit() {
+        // Prepare data for testing:
+        TableView<Movement> table = lookup("#tbMovements").queryTableView();
+        
+        Movement movement = new Movement();
+        movement.setDescription("Deposit");
+        Double amount = 200.0;
+        movement.setAmount(amount);
+        movement.setTimestamp(new java.util.Date());
+        
+        // Interaction with UI:
+        clickOn("#tfAmount");
+        write(movement.getAmount().toString());
+        clickOn("#btMake");
+        
+        // Cancel operation: usamos ESCAPE para cancelar, simulando pulsar "Cancelar"
+        // (isCancelButton() existe en TestFX, pero type(KeyCode.ESCAPE) es igual de fiable aquí).
+        type(javafx.scene.input.KeyCode.ESCAPE); 
+        
+        // Verify movement data IS NOT in the table
+        SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy");
+        
+        assertEquals("The movement has been added but it should be cancelled!!!",
+                0L, // Comprobamos que el recuento sea CERO
+                table.getItems().stream()
+                        .filter(m -> m.getAmount().equals(movement.getAmount()))
+                        .filter(m -> m.getDescription().equals(movement.getDescription()))
+                        .filter(m -> dateFormat.format(m.getTimestamp()).equals(dateFormat.format(movement.getTimestamp())))
+                        .count());
+    }
+}
+
+
+Mio
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import org.junit.Test;
+import org.testfx.framework.junit.ApplicationTest;
+import javafx.scene.input.KeyCode;
+import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
+import clientside.model.Movement;
+import javafx.stage.Stage;
+
+import java.util.Date;
+import java.text.SimpleDateFormat;
+
+public class DepositsAndPaymentsTest extends ApplicationTest {
+
+    // Recuerda sobreescribir el método start() para lanzar tu vista
     @Override
     public void start(Stage stage) throws Exception {
         // Lógica de inicio (ej. new CRUDBankJFXApplication().start(stage);)
     }
 
+    /**
+     * Método auxiliar para generar una cantidad aleatoria positiva entre 1.0 y 1000.0
+     * redondeada a dos decimales (formato moneda).
+     */
+    private Double generateRandomAmount() {
+        return Math.round((Math.random() * 999.0 + 1.0) * 100.0) / 100.0;
+    }
+
     @Test
     public void testDeposit() {
-        // 1. Seleccionar 'Deposit' en el ComboBox de operaciones
+        // 1. Obtener el balance inicial directamente desde el campo de texto de la UI
+        TextField tfBalance = lookup("#tfAccountBalance").queryAs(TextField.class);
+        double initialBalance = Double.parseDouble(tfBalance.getText());
+        
+        // Generar cantidad aleatoria
+        double depositAmount = generateRandomAmount();
+        
+        // 2. Preparar e inyectar los datos en la interfaz
         clickOn("#cbOperation").clickOn("Deposit");
+        clickOn("#tfAmount").write(String.valueOf(depositAmount));
         
-        // 2. Introducir la cantidad del depósito
-        clickOn("#tfAmount").write("150.0");
-        
-        // 3. Hacer clic en el botón 'Make Deposit'
+        // 3. Ejecutar y aceptar con teclado
         clickOn("#btMake");
-        
-        // 4. Aceptar el cuadro de diálogo de confirmación (Alert) simulando la tecla ENTER
         type(KeyCode.ENTER);
         
-        // 5. Obtener la tabla de movimientos desde la vista
-        TableView<Movement> table = lookup("#tbMovements").queryTableView();
+        // --- ASERTOS: VERIFICAR LA CORRECTITUD DE LOS DATOS (Sin contar líneas) ---
         
-        // 6. Obtener el último movimiento insertado en la tabla
+        // A) Verificar que el saldo total de la cuenta ha sumado matemáticamente el depósito
+        double expectedBalance = initialBalance + depositAmount;
+        double finalBalance = Double.parseDouble(tfBalance.getText());
+        assertEquals("El balance de la cuenta debe reflejar la suma del depósito", expectedBalance, finalBalance, 0.001);
+        
+        // B) Extraer el último objeto insertado y validar todas sus propiedades íntegramente
+        TableView<Movement> table = lookup("#tbMovements").queryTableView();
         Movement lastMovement = table.getItems().get(table.getItems().size() - 1);
         
-        // --- ASERTOS (ASSERTIONS) ---
+        assertEquals("La cantidad registrada en el objeto Movement debe ser " + depositAmount, depositAmount, lastMovement.getAmount(), 0.001);
+        assertEquals("La descripción del objeto Movement debe ser 'Deposit'", "Deposit", lastMovement.getDescription());
         
-        // Verificar que la cantidad es correcta (se usa 0.001 como margen de error para Double)
-        assertEquals("La cantidad del depósito debe ser 150.0", 150.0, lastMovement.getAmount(), 0.001);
-        
-        // Verificar que el tipo de movimiento (descripción) es correcto
-        assertEquals("El tipo de movimiento debe ser 'Deposit'", "Deposit", lastMovement.getDescription());
-        
-        // Verificar que la fecha es correcta (la de hoy, según el formato configurado en tu controlador)
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-        assertEquals("La fecha del movimiento debe coincidir con la fecha actual", 
+        assertEquals("La fecha del objeto Movement debe ser la fecha de hoy", 
                      sdf.format(new Date()), 
                      sdf.format(lastMovement.getTimestamp()));
     }
 
     @Test
     public void testPayment() {
-        // 1. Seleccionar 'Payment' en el ComboBox de operaciones
+        // 1. Obtener el balance inicial
+        TextField tfBalance = lookup("#tfAccountBalance").queryAs(TextField.class);
+        double initialBalance = Double.parseDouble(tfBalance.getText());
+        
+        // Generar cantidad aleatoria
+        double paymentAmount = generateRandomAmount();
+        
+        // 2. Preparar e inyectar los datos en la interfaz
         clickOn("#cbOperation").clickOn("Payment");
+        clickOn("#tfAmount").write(String.valueOf(paymentAmount));
         
-        // 2. Introducir la cantidad del pago
-        clickOn("#tfAmount").write("50.0");
-        
-        // 3. Hacer clic en el botón 'Make Payment'
+        // 3. Ejecutar y aceptar con teclado
         clickOn("#btMake");
-        
-        // 4. Aceptar el cuadro de diálogo de confirmación (Alert) simulando la tecla ENTER
         type(KeyCode.ENTER);
         
-        // 5. Obtener la tabla de movimientos desde la vista
-        TableView<Movement> table = lookup("#tbMovements").queryTableView();
+        // --- ASERTOS: VERIFICAR LA CORRECTITUD DE LOS DATOS (Sin contar líneas) ---
         
-        // 6. Obtener el último movimiento insertado
+        // A) Verificar que el saldo total de la cuenta ha restado matemáticamente el pago
+        double expectedBalance = initialBalance - paymentAmount;
+        double finalBalance = Double.parseDouble(tfBalance.getText());
+        assertEquals("El balance de la cuenta debe reflejar la resta del pago", expectedBalance, finalBalance, 0.001);
+        
+        // B) Extraer el último objeto insertado y validar todas sus propiedades íntegramente
+        TableView<Movement> table = lookup("#tbMovements").queryTableView();
         Movement lastMovement = table.getItems().get(table.getItems().size() - 1);
         
-        // --- ASERTOS (ASSERTIONS) ---
+        assertEquals("La cantidad registrada en el objeto Movement debe ser " + paymentAmount, paymentAmount, lastMovement.getAmount(), 0.001);
+        assertEquals("La descripción del objeto Movement debe ser 'Payment'", "Payment", lastMovement.getDescription());
         
-        // Verificar que la cantidad es correcta
-        assertEquals("La cantidad del pago debe ser 50.0", 50.0, lastMovement.getAmount(), 0.001);
-        
-        // Verificar que el tipo de movimiento es el correcto
-        assertEquals("El tipo de movimiento debe ser 'Payment'", "Payment", lastMovement.getDescription());
-        
-        // Verificar que la fecha es correcta
         SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
-        assertEquals("La fecha del movimiento debe coincidir con la fecha actual", 
+        assertEquals("La fecha del objeto Movement debe ser la fecha de hoy", 
                      sdf.format(new Date()), 
                      sdf.format(lastMovement.getTimestamp()));
     }
 
     @Test
     public void testCancelDepositDoesNotCreateMovement() {
-        // 1. Obtener la tabla para registrar cuántos movimientos hay antes de la operación
-        TableView<Movement> table = lookup("#tbMovements").queryTableView();
-        int initialMovementsCount = table.getItems() != null ? table.getItems().size() : 0;
+        // 1. Obtener el balance inicial
+        TextField tfBalance = lookup("#tfAccountBalance").queryAs(TextField.class);
+        double initialBalance = Double.parseDouble(tfBalance.getText());
         
-        // 2. Preparar los datos del movimiento en la interfaz
+        // Generar cantidad aleatoria
+        double cancelAmount = generateRandomAmount();
+        
+        // 2. Preparar el movimiento ficticio
         clickOn("#cbOperation").clickOn("Deposit");
-        clickOn("#tfAmount").write("200.0");
+        clickOn("#tfAmount").write(String.valueOf(cancelAmount));
         
-        // 3. Hacer clic en el botón de confirmación
+        // 3. Ejecutar y CANCELAR con la tecla de escape
         clickOn("#btMake");
-        
-        // 4. Simular la pulsación de la tecla ESCAPE para cancelar el cuadro de alerta (Alert)
         type(KeyCode.ESCAPE);
         
-        // 5. Volver a consultar la cantidad de elementos en la tabla tras la cancelación
-        int finalMovementsCount = table.getItems() != null ? table.getItems().size() : 0;
+        // --- ASERTOS: VERIFICAR INMUTABILIDAD DE LOS DATOS (Sin contar líneas) ---
         
-        // --- ASERTO (ASSERTION) ---
+        // A) Verificar que el saldo total de la cuenta NO ha sufrido modificaciones
+        double finalBalance = Double.parseDouble(tfBalance.getText());
+        assertEquals("El balance de la cuenta NO debe cambiar al cancelar la operación", initialBalance, finalBalance, 0.001);
         
-        // Verificar que el tamaño de la tabla sigue siendo exactamente el mismo
-        assertEquals("El número de movimientos no debe cambiar si se cancela la operación", 
-                     initialMovementsCount, 
-                     finalMovementsCount);
+        // B) Revisar la tabla para confirmar que el último movimiento introducido NO ES el depósito cancelado
+        TableView<Movement> table = lookup("#tbMovements").queryTableView();
+        Movement lastMovementAfter = table.getItems().isEmpty() ? null : table.getItems().get(table.getItems().size() - 1);
+        
+        if (lastMovementAfter != null) {
+            boolean isCancelledMovement = (Math.abs(lastMovementAfter.getAmount() - cancelAmount) < 0.001 && lastMovementAfter.getDescription().equals("Deposit"));
+            assertFalse("El último objeto de la tabla NO puede ser el movimiento cancelado de cantidad " + cancelAmount, isCancelledMovement);
+        }
     }
 }
