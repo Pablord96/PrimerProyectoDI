@@ -384,10 +384,7 @@ public class DepositsAndPaymentsAdvancedTest extends ApplicationTest {
 }
 
 
-
-
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import org.junit.Test;
 import org.testfx.framework.junit.ApplicationTest;
 import javafx.scene.input.KeyCode;
@@ -452,7 +449,7 @@ public class DepositsAndPaymentsTest extends ApplicationTest {
         // 3. Hacer clic en el botón 'Make Payment'
         clickOn("#btMake");
         
-        // 4. Aceptar el cuadro de diálogo de confirmación (Alert)
+        // 4. Aceptar el cuadro de diálogo de confirmación (Alert) simulando la tecla ENTER
         type(KeyCode.ENTER);
         
         // 5. Obtener la tabla de movimientos desde la vista
@@ -475,19 +472,6 @@ public class DepositsAndPaymentsTest extends ApplicationTest {
                      sdf.format(new Date()), 
                      sdf.format(lastMovement.getTimestamp()));
     }
-}
-
-
-
-import static org.junit.Assert.assertEquals;
-import org.junit.Test;
-import javafx.scene.input.KeyCode;
-import javafx.scene.control.TableView;
-import clientside.model.Movement;
-
-public class CancelMovementTest extends ApplicationTest {
-
-    // Recuerda que aquí debe ir tu método start(Stage stage) de configuración
 
     @Test
     public void testCancelDepositDoesNotCreateMovement() {
@@ -503,7 +487,6 @@ public class CancelMovementTest extends ApplicationTest {
         clickOn("#btMake");
         
         // 4. Simular la pulsación de la tecla ESCAPE para cancelar el cuadro de alerta (Alert)
-        // También puedes usar clickOn("Cancelar") o clickOn("Cancel") dependiendo del idioma de tu SO
         type(KeyCode.ESCAPE);
         
         // 5. Volver a consultar la cantidad de elementos en la tabla tras la cancelación
