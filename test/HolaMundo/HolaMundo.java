@@ -383,3 +383,137 @@ public class DepositsAndPaymentsAdvancedTest extends ApplicationTest {
     }
 }
 
+
+
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import org.junit.Test;
+import org.testfx.framework.junit.ApplicationTest;
+import javafx.scene.input.KeyCode;
+import javafx.scene.control.TableView;
+import clientside.model.Movement;
+import javafx.stage.Stage;
+
+import java.util.Date;
+import java.text.SimpleDateFormat;
+
+public class DepositsAndPaymentsTest extends ApplicationTest {
+
+    // Aquí deberías sobreescribir el método start() para lanzar tu aplicación o vista
+    @Override
+    public void start(Stage stage) throws Exception {
+        // Lógica de inicio (ej. new CRUDBankJFXApplication().start(stage);)
+    }
+
+    @Test
+    public void testDeposit() {
+        // 1. Seleccionar 'Deposit' en el ComboBox de operaciones
+        clickOn("#cbOperation").clickOn("Deposit");
+        
+        // 2. Introducir la cantidad del depósito
+        clickOn("#tfAmount").write("150.0");
+        
+        // 3. Hacer clic en el botón 'Make Deposit'
+        clickOn("#btMake");
+        
+        // 4. Aceptar el cuadro de diálogo de confirmación (Alert) simulando la tecla ENTER
+        type(KeyCode.ENTER);
+        
+        // 5. Obtener la tabla de movimientos desde la vista
+        TableView<Movement> table = lookup("#tbMovements").queryTableView();
+        
+        // 6. Obtener el último movimiento insertado en la tabla
+        Movement lastMovement = table.getItems().get(table.getItems().size() - 1);
+        
+        // --- ASERTOS (ASSERTIONS) ---
+        
+        // Verificar que la cantidad es correcta (se usa 0.001 como margen de error para Double)
+        assertEquals("La cantidad del depósito debe ser 150.0", 150.0, lastMovement.getAmount(), 0.001);
+        
+        // Verificar que el tipo de movimiento (descripción) es correcto
+        assertEquals("El tipo de movimiento debe ser 'Deposit'", "Deposit", lastMovement.getDescription());
+        
+        // Verificar que la fecha es correcta (la de hoy, según el formato configurado en tu controlador)
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+        assertEquals("La fecha del movimiento debe coincidir con la fecha actual", 
+                     sdf.format(new Date()), 
+                     sdf.format(lastMovement.getTimestamp()));
+    }
+
+    @Test
+    public void testPayment() {
+        // 1. Seleccionar 'Payment' en el ComboBox de operaciones
+        clickOn("#cbOperation").clickOn("Payment");
+        
+        // 2. Introducir la cantidad del pago
+        clickOn("#tfAmount").write("50.0");
+        
+        // 3. Hacer clic en el botón 'Make Payment'
+        clickOn("#btMake");
+        
+        // 4. Aceptar el cuadro de diálogo de confirmación (Alert)
+        type(KeyCode.ENTER);
+        
+        // 5. Obtener la tabla de movimientos desde la vista
+        TableView<Movement> table = lookup("#tbMovements").queryTableView();
+        
+        // 6. Obtener el último movimiento insertado
+        Movement lastMovement = table.getItems().get(table.getItems().size() - 1);
+        
+        // --- ASERTOS (ASSERTIONS) ---
+        
+        // Verificar que la cantidad es correcta
+        assertEquals("La cantidad del pago debe ser 50.0", 50.0, lastMovement.getAmount(), 0.001);
+        
+        // Verificar que el tipo de movimiento es el correcto
+        assertEquals("El tipo de movimiento debe ser 'Payment'", "Payment", lastMovement.getDescription());
+        
+        // Verificar que la fecha es correcta
+        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
+        assertEquals("La fecha del movimiento debe coincidir con la fecha actual", 
+                     sdf.format(new Date()), 
+                     sdf.format(lastMovement.getTimestamp()));
+    }
+}
+
+
+
+import static org.junit.Assert.assertEquals;
+import org.junit.Test;
+import javafx.scene.input.KeyCode;
+import javafx.scene.control.TableView;
+import clientside.model.Movement;
+
+public class CancelMovementTest extends ApplicationTest {
+
+    // Recuerda que aquí debe ir tu método start(Stage stage) de configuración
+
+    @Test
+    public void testCancelDepositDoesNotCreateMovement() {
+        // 1. Obtener la tabla para registrar cuántos movimientos hay antes de la operación
+        TableView<Movement> table = lookup("#tbMovements").queryTableView();
+        int initialMovementsCount = table.getItems() != null ? table.getItems().size() : 0;
+        
+        // 2. Preparar los datos del movimiento en la interfaz
+        clickOn("#cbOperation").clickOn("Deposit");
+        clickOn("#tfAmount").write("200.0");
+        
+        // 3. Hacer clic en el botón de confirmación
+        clickOn("#btMake");
+        
+        // 4. Simular la pulsación de la tecla ESCAPE para cancelar el cuadro de alerta (Alert)
+        // También puedes usar clickOn("Cancelar") o clickOn("Cancel") dependiendo del idioma de tu SO
+        type(KeyCode.ESCAPE);
+        
+        // 5. Volver a consultar la cantidad de elementos en la tabla tras la cancelación
+        int finalMovementsCount = table.getItems() != null ? table.getItems().size() : 0;
+        
+        // --- ASERTO (ASSERTION) ---
+        
+        // Verificar que el tamaño de la tabla sigue siendo exactamente el mismo
+        assertEquals("El número de movimientos no debe cambiar si se cancela la operación", 
+                     initialMovementsCount, 
+                     finalMovementsCount);
+    }
+}
