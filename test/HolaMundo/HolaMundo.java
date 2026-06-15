@@ -166,3 +166,220 @@ public class AppCrudCompletoTest extends ApplicationTest {
 
 
 
+
+
+
+
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import org.junit.Test;
+import org.testfx.framework.junit.ApplicationTest;
+import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
+import javafx.scene.control.Button;
+import javafx.scene.control.DialogPane;
+import javafx.scene.control.ButtonType;
+import javafx.stage.Stage;
+import clientside.model.Movement;
+import java.util.Date;
+import java.text.SimpleDateFormat;
+
+public class DepositsAndPaymentsAdvancedTest extends ApplicationTest {
+
+    @Override
+    public void start(Stage stage) throws Exception {
+        // NOTA: Inicializa aquí tu FXML y controlador
+        // FXMLLoader loader = new FXMLLoader(getClass().getResource("/crudbankjfxclient/view/DepositsAndPaymentsView.fxml"));
+        // Parent root = loader.load();
+        // ... configuración ...
+        // stage.setScene(new Scene(root));
+        // stage.show();
+    }
+
+    // =========================================================================
+    // MÉTODOS AUXILIARES PARA MANEJAR ALERTAS SIN DEPENDER DEL IDIOMA
+    // =========================================================================
+
+    /**
+     * Busca un cuadro de diálogo en pantalla y hace clic en el botón de confirmación (OK/Aceptar).
+     */
+    private void clickOkOnDialog() {
+        DialogPane dialogPane = lookup(".dialog-pane").queryAs(DialogPane.class);
+        Button okButton = (Button) dialogPane.lookupButton(ButtonType.OK);
+        clickOn(okButton);
+    }
+
+    /**
+     * Busca un cuadro de diálogo en pantalla y hace clic en el botón de cancelación (Cancel/Cancelar).
+     */
+    private void clickCancelOnDialog() {
+        DialogPane dialogPane = lookup(".dialog-pane").queryAs(DialogPane.class);
+        Button cancelButton = (Button) dialogPane.lookupButton(ButtonType.CANCEL);
+        clickOn(cancelButton);
+    }
+
+    // =========================================================================
+    // 1. FLUJO IDEAL (HAPPY PATH) CON VERIFICACIÓN DE SALDOS
+    // =========================================================================
+
+    @Test
+    public void testSuccessfulDepositUpdatesTableAndBalance() {
+        // --- ARRANGE ---
+        TextField tfBalance = lookup("#tfAccountBalance").queryAs(TextField.class);
+        double initialBalance = Double.parseDouble(tfBalance.getText());
+        
+        TableView<Movement> table = lookup("#tbMovements").queryTableView();
+        int initialCount = table.getItems() != null ? table.getItems().size() : 0;
+        
+        double depositAmount = 150.0;
+
+        // --- ACT ---
+        clickOn("#cbOperation").clickOn("Deposit");
+        clickOn("#tfAmount").write(String.valueOf(depositAmount));
+        clickOn("#btMake");
+        
+        // Aceptar confirmación usando el método auxiliar locale-independent
+        clickOkOnDialog(); 
+
+        // --- ASSERT ---
+        double expectedBalance = initialBalance + depositAmount;
+        double finalBalance = Double.parseDouble(tfBalance.getText());
+        assertEquals("El balance total debe reflejar el incremento", expectedBalance, finalBalance, 0.001);
+
+        int finalCount = table.getItems().size();
+        assertEquals("Debe haber 1 movimiento nuevo", initialCount + 1, finalCount);
+
+        Movement lastMovement = table.getItems().get(finalCount - 1);
+        assertEquals("La cantidad en la tabla debe ser exacta", depositAmount, lastMovement.getAmount(), 0.001);
+        assertEquals("Deposit", lastMovement.getDescription());
+    }
+
+    @Test
+    public void testSuccessfulPaymentUpdatesTableAndBalance() {
+        // --- ARRANGE ---
+        TextField tfBalance = lookup("#tfAccountBalance").queryAs(TextField.class);
+        double initialBalance = Double.parseDouble(tfBalance.getText());
+        double paymentAmount = 50.0;
+
+        // --- ACT ---
+        clickOn("#cbOperation").clickOn("Payment");
+        clickOn("#tfAmount").write(String.valueOf(paymentAmount));
+        clickOn("#btMake");
+        
+        // Aceptar confirmación independientemente del idioma
+        clickOkOnDialog(); 
+
+        // --- ASSERT ---
+        double expectedBalance = initialBalance - paymentAmount;
+        double finalBalance = Double.parseDouble(tfBalance.getText());
+        assertEquals("El balance debe disminuir según el pago", expectedBalance, finalBalance, 0.001);
+    }
+
+    // =========================================================================
+    // 2. TESTS DE CANCELACIÓN (INMUTABILIDAD DE ESTADO)
+    // =========================================================================
+
+    @Test
+    public void testCancelOperationLeavesBalanceAndTableUnchanged() {
+        // --- ARRANGE ---
+        TextField tfBalance = lookup("#tfAccountBalance").queryAs(TextField.class);
+        double initialBalance = Double.parseDouble(tfBalance.getText());
+        
+        TableView<Movement> table = lookup("#tbMovements").queryTableView();
+        int initialCount = table.getItems() != null ? table.getItems().size() : 0;
+
+        // --- ACT ---
+        clickOn("#cbOperation").clickOn("Payment");
+        clickOn("#tfAmount").write("100.0");
+        clickOn("#btMake");
+        
+        // Cancelar operación independientemente del idioma
+        clickCancelOnDialog(); 
+
+        // --- ASSERT ---
+        double finalBalance = Double.parseDouble(tfBalance.getText());
+        int finalCount = table.getItems() != null ? table.getItems().size() : 0;
+        
+        assertEquals("El balance no debe alterarse", initialBalance, finalBalance, 0.001);
+        assertEquals("La tabla no debe cambiar de tamaño", initialCount, finalCount);
+    }
+
+    // =========================================================================
+    // 3. TESTS EXHAUSTIVOS DE VALIDACIÓN DE ERRORES
+    // =========================================================================
+
+    @Test
+    public void testEmptyAmountShowsSpecificErrorMessage() {
+        // --- ACT ---
+        clickOn("#cbOperation").clickOn("Deposit");
+        clickOn("#tfAmount").write(""); 
+        clickOn("#btMake");
+        
+        clickOkOnDialog(); // 1. Confirmar la intención de hacer la operación
+        
+        // --- ASSERT ---
+        DialogPane dialogPane = lookup(".dialog-pane").queryAs(DialogPane.class);
+        assertNotNull("Debe aparecer el panel de error", dialogPane);
+        assertEquals("Amount is required to do this operation", dialogPane.getContentText());
+        
+        clickOkOnDialog(); // 2. Cerrar el panel de error
+    }
+
+    @Test
+    public void testNegativeAmountShowsSpecificErrorMessage() {
+        // --- ACT ---
+        clickOn("#cbOperation").clickOn("Deposit");
+        clickOn("#tfAmount").write("-50.0"); 
+        clickOn("#btMake");
+        
+        clickOkOnDialog(); // 1. Confirmar intención
+        
+        // --- ASSERT ---
+        DialogPane dialogPane = lookup(".dialog-pane").queryAs(DialogPane.class);
+        assertNotNull("Debe aparecer el panel de error", dialogPane);
+        assertEquals("Amount must be greater than 0.0!!", dialogPane.getContentText());
+        
+        clickOkOnDialog(); // 2. Cerrar el panel de error
+    }
+
+    @Test
+    public void testNonNumericAmountCaughtByNumberFormatException() {
+        // --- ACT ---
+        clickOn("#cbOperation").clickOn("Deposit");
+        clickOn("#tfAmount").write("cincuenta"); 
+        clickOn("#btMake");
+        
+        clickOkOnDialog(); // 1. Confirmar intención
+        
+        // --- ASSERT ---
+        DialogPane dialogPane = lookup(".dialog-pane").queryAs(DialogPane.class);
+        assertNotNull("Debe aparecer el panel de error", dialogPane);
+        assertEquals("Amount must be a real positive number!!", dialogPane.getContentText());
+        
+        clickOkOnDialog(); // 2. Cerrar el panel de error
+    }
+
+    @Test
+    public void testInsufficientBalanceShowsSpecificErrorMessage() {
+        // --- ARRANGE ---
+        TextField tfBalance = lookup("#tfAccountBalance").queryAs(TextField.class);
+        double currentBalance = Double.parseDouble(tfBalance.getText());
+        double excessiveAmount = currentBalance + 5000.0;
+
+        // --- ACT ---
+        clickOn("#cbOperation").clickOn("Payment");
+        clickOn("#tfAmount").write(String.valueOf(excessiveAmount)); 
+        clickOn("#btMake");
+        
+        clickOkOnDialog(); // 1. Confirmar intención
+        
+        // --- ASSERT ---
+        DialogPane dialogPane = lookup(".dialog-pane").queryAs(DialogPane.class);
+        assertNotNull("Debe aparecer el panel de error", dialogPane);
+        assertEquals("Insufficient balance for this amount.", dialogPane.getContentText());
+        
+        clickOkOnDialog(); // 2. Cerrar el panel de error
+    }
+}
+
